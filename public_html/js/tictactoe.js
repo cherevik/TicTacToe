@@ -9,10 +9,10 @@ var TicTacToe = Class.extend({
     CROSS: 1, 
     CIRCLE: 2,
     
-    HUMAN: 2,
-    COMPUTER: 1,
+    HUMAN: 1,
+    COMPUTER: 2,
     
-    turn: 2,
+    turn: 1,
     
     LOST: -100, 
     WON: 100,
