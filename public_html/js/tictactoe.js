@@ -1,6 +1,8 @@
 var TicTacToe = Class.extend({
    
-    size: 3, 
+    size: 4, 
+    depth: 3,
+    
     cellsize: 0, 
     model: null, 
     canvas: null,
@@ -183,7 +185,7 @@ var TicTacToe = Class.extend({
                 }
             }
         }
-        return rv; 
+        return rv;  
     }, 
     
     cloneModel: function(model) {
@@ -213,7 +215,7 @@ var TicTacToe = Class.extend({
         var bestValue = this.LOST; 
         for (var i = 0; i < moves.length; i ++) {
             var model = this.makeMove(this.model, moves[i], this.COMPUTER); 
-            var value = this.minimax(model, this.HUMAN); 
+            var value = this.minimax(model, this.HUMAN, this.depth); 
             if (value > bestValue) {
                 nextMove = moves[i];
                 bestValue = value; 
@@ -228,10 +230,10 @@ var TicTacToe = Class.extend({
         return nextMove; 
     },
     
-    minimax: function(m, role) {
+    minimax: function(m, role, depth) {
         // check if we have reached a leaf node 
         var bestValue = this.evaluatePosition(m); 
-        if (bestValue != this.TIED) {
+        if (depth == 0 || bestValue != this.TIED) {
             return bestValue; 
         }
 
@@ -241,7 +243,7 @@ var TicTacToe = Class.extend({
             bestValue = this.LOST; 
             for (var i = 0; i < moves.length; i ++) {
                 var model = this.makeMove(m, moves[i], role); 
-                var val = this.minimax(model, role == this.HUMAN ? this.COMPUTER : this.HUMAN); 
+                var val = this.minimax(model, role == this.HUMAN ? this.COMPUTER : this.HUMAN, (depth-1)); 
                 if (val > bestValue) {
                     bestValue = val;
                 }
@@ -254,7 +256,7 @@ var TicTacToe = Class.extend({
             bestValue = this.WON; 
             for (var i = 0; i < moves.length; i ++) {
                 var model = this.makeMove(m, moves[i], role); 
-                var val = this.minimax(model, role == this.HUMAN ? this.COMPUTER : this.HUMAN); 
+                var val = this.minimax(model, role == this.HUMAN ? this.COMPUTER : this.HUMAN, (depth-1)); 
                 if (val < bestValue) {
                     bestValue = val;
                 }
