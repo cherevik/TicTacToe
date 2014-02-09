@@ -1,6 +1,6 @@
 var TicTacToe = Class.extend({
    
-    size: 4, 
+    size: 6, 
     depth: 3,
     
     cellsize: 0, 
@@ -16,9 +16,11 @@ var TicTacToe = Class.extend({
     
     turn: 1,
     
-    LOST: -100, 
-    WON: 100,
+    LOST: -Math.pow(2, 53), 
+    WON: Math.pow(2, 53),
     TIED: 0,
+    
+    maxlen: 4,
     
     // initializes the game 
     init: function(canvas) {
@@ -158,21 +160,24 @@ var TicTacToe = Class.extend({
             this.model[c.h][c.v] = this.HUMAN; 
             this.draw();
             
-            // let the computer make its move 
-            var self = this; 
-            setTimeout(function() {
-                var move = self.getNextMove(); 
-                if (move) {
-                    self.model = self.makeMove(self.model, move, self.COMPUTER); 
-                    self.draw();
+            var value = this.evaluatePosition(this.model); 
+            if (value != this.LOST && value != this.WON) {
+                // let the computer make its move 
+                var self = this; 
+                setTimeout(function() {
+                    var move = self.getNextMove(); 
+                    if (move) {
+                        self.model = self.makeMove(self.model, move, self.COMPUTER); 
+                        self.draw();
 
-                    // if the game is not over, give control back to human 
-                    var value = self.evaluatePosition(self.model); 
-                    if (value == self.TIED) {
-                        self.turn = self.HUMAN;
+                        // if the game is not over, give control back to human 
+                        var value = self.evaluatePosition(self.model); 
+                        if (value != self.LOST && value != self.WON) {
+                            self.turn = self.HUMAN;
+                        }
                     }
-                }
-            }, 10); 
+                }, 10); 
+            }
         }
     }, 
     
@@ -233,10 +238,11 @@ var TicTacToe = Class.extend({
     minimax: function(m, role, depth) {
         // check if we have reached a leaf node 
         var bestValue = this.evaluatePosition(m); 
-        if (depth == 0 || bestValue != this.TIED) {
+        if (depth == 0 || bestValue == this.WON || bestValue == this.LOST) {
             return bestValue; 
         }
-
+        
+        var d = this.depth - depth; 
         var moves = this.generateMoves(m); 
         if (role == this.COMPUTER && moves.length > 0) {
             // in this node we are playing to maximize the result 
@@ -270,65 +276,70 @@ var TicTacToe = Class.extend({
         return bestValue;
     },
     
-    // used to evaluate the position on the board 
-    // the game is over if we have a complete row, 
-    // a complete column, or a complete diagonal 
-    evaluatePosition: function(model) {
-        
-        // check for full columns 
-        for (var i = 0; i < this.size; i ++) {
-            var j = 1; 
-            while (j < this.size 
-                    && model[i][j] != this.EMPTY 
-                    && model[i][j] == model[i][j-1]) {
-                j ++; 
-            }
-            if (j == this.size) {
-                // we have a full column
-                return model[i][0] == this.COMPUTER ? this.WON : this.LOST; 
-            }
+    evaluateSequence: function(player, count) {
+        if (count < 2 || player == this.EMPTY) {
+            return 0;
         }
-        
-        // check for full rows 
-        for (var j = 0; j < this.size; j ++) {
-            var i = 1; 
-            while (i < this.size 
-                    && model[i][j] != this.EMPTY 
-                    && model[i][j] == model[i-1][j]) {
-                i ++; 
-            }
-            if (i == this.size) {
-                // we have a full column
-                return model[0][j] == this.COMPUTER ? this.WON : this.LOST; 
-            }
+        if (count == this.maxlen) {
+            return player == this.COMPUTER ? this.WON : this.LOST;
+        } else {
+            var score = Math.pow(10, count); 
+            return player == this.COMPUTER ? score : -score;
         }
-        
-        // check one diagonal 
-        var i = 1; 
-        while (i < this.size 
-                && model[i][i] != this.EMPTY 
-                && model[i][i] == model[i-1][i-1]) {
-            i ++; 
-        }
-        if (i == this.size) {
-            // we have a full diagonal
-            return model[0][0] == this.COMPUTER ? this.WON : this.LOST; 
-        }
-        
-        // check the other diagonal 
-        i = 1;
-        while (i < this.size 
-                && model[this.size-1-i][i] != this.EMPTY 
-                && model[this.size-1-i][i] == model[this.size-i][i-1]) {
-            i ++;
-        }
-        if (i == this.size) {
-            // we have a full diagonal
-            return model[this.size-1][0] == this.COMPUTER ? this.WON : this.LOST; 
-        }
-        
-        return this.TIED;
-    }
+    },
     
+    evaluatePosition: function(model) {
+        var totalScore = 0; 
+        
+        // process columns 
+        for (var i = 0; i < this.size; i ++) {
+            var player = this.EMPTY; 
+            var count = 0; 
+            for (var j = 0; j < this.size; j ++) {
+                if (model[i][j] != player) {
+                    score = this.evaluateSequence(player, count); 
+                    if (score == this.WON || score == this.LOST) {
+                        return score; 
+                    }
+                    totalScore += score; 
+                    count = 1; 
+                    player = model[i][j];
+                } else if (player != this.EMPTY) {
+                    count ++;
+                }
+            }
+            var score = this.evaluateSequence(player, count); 
+            if (score == this.WON || score == this.LOST) {
+                return score; 
+            }
+            totalScore += score; 
+        }
+        
+        // process rows 
+        for (var j = 0; j < this.size; j ++) {
+            var player = this.EMPTY; 
+            var count = 0; 
+            for (var i = 0; i < this.size; i ++) {
+                if (model[i][j] != player) {
+                    score = this.evaluateSequence(player, count); 
+                    if (score == this.WON || score == this.LOST) {
+                        return score; 
+                    }
+                    totalScore += score; 
+                    count = 1; 
+                    player = model[i][j];
+                } else if (player != this.EMPTY) {
+                    count ++;
+                }
+            }
+            var score = this.evaluateSequence(player, count); 
+            if (score == this.WON || score == this.LOST) {
+                return score; 
+            }
+            totalScore += score; 
+        }
+        
+        return totalScore;
+    }
 });
 
