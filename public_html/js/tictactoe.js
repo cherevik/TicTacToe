@@ -293,6 +293,8 @@ var TicTacToe = Class.extend({
         
         // process columns 
         for (var i = 0; i < this.size; i ++) {
+            // initialize the player to none 
+            // and the count of items in a sequnce to zero 
             var player = this.EMPTY; 
             var count = 0; 
             for (var j = 0; j < this.size; j ++) {
